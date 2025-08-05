@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+      --font-cedarville-cursive: "Cedarville Cursive", serif;
+      --font-poppins: 'Poppins', sans-serif;
+      --font-geist-sans: 'Geist', sans-serif;
+      --font-geist-mono: 'Geist Mono', monospace;
+}
+
+body {
+      background: linear-gradient(to bottom, #2d4e09, #0d1802) !important;
+      color: white !important;
+}
+
+.normal-button-bg-color {
+      background-color: #5F9E19 !important;
+}
+
+.navbar-bg-color {
+      background-color: #28410D !important;
+}
+
+.footer-bg-color {
+      background-color: #395F0F !important;
+}
+
+::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+}
+
+
+.responsive-width {
+      max-width: 1280px;
+      width: 100%;
+}
+
+
+.custom-rate .ant-rate-star-zero svg {
+      color: white;
+      opacity: 0.5;
+}
+
+.custom-rate .ant-rate-star-full svg {
+      color: #facc15;
+}

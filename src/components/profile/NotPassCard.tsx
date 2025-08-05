@@ -1,0 +1,19 @@
+import React from 'react'
+import ShoeCard from '../shoeCard/ShoeCard'
+
+const NotPassCard = () => {
+  return (
+    <div className="grid grid-cols-3 max-lg:grid-cols-2 max-md:grid-cols-1 gap-5 mb-20">
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+      <ShoeCard pass={false} />
+    </div>
+  )
+}
+
+export default NotPassCard
