@@ -3,7 +3,6 @@ import './globals.css'
 import { Geist, Geist_Mono, Poppins } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 
-
 const poppins = Poppins({
   variable: '--font-poppins',
   subsets: ['latin'],
@@ -22,10 +21,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata = {
-
-  title: 'Stock Market',
+  title: 'KickCheck',
   description:
-    'Stock Market is a platform for people to buy and sell stocks, view market trends and make informed investment decisions.',
+    'KickCheck is a platform for people to authenticate sneakers, view market trends and make informed purchasing decisions.',
 }
 
 export default function RootLayout({

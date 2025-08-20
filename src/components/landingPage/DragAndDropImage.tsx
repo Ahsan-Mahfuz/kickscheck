@@ -11,6 +11,7 @@ import {
   Typography,
   Space,
   Divider,
+  Select,
 } from 'antd'
 import { CiImageOn } from 'react-icons/ci'
 import {
@@ -21,6 +22,7 @@ import {
 } from 'react-icons/ai'
 import Image from 'next/image'
 import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface'
+import { useGetAllMySubscriptionListQuery } from '@/redux/subscriptionsApis'
 
 const { Dragger } = Upload
 const { TextArea } = Input
@@ -53,6 +55,18 @@ interface SubmissionData {
   aiResult: AIResult | null
 }
 
+type SubscriptionItem = {
+  _id: string
+  subscriptionId: {
+    _id: string
+    subscription_name: string
+    subscription_period: string
+    id: string
+  }
+  isAvailable: boolean
+  id: string
+}
+
 type StepType = 'upload' | 'form' | 'verification' | 'result'
 type VerificationMethodType = 'ai' | 'human' | null
 
@@ -65,6 +79,9 @@ const SneakerAuthSystem: React.FC = () => {
   const [aiResult, setAiResult] = useState<AIResult | null>(null)
   const [showModal, setShowModal] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
+
+  const { data: getMySubscriptionList } =
+    useGetAllMySubscriptionListQuery(undefined)
 
   const handleUpload = (info: UploadChangeParam<UploadFile>) => {
     const { fileList } = info
@@ -267,6 +284,25 @@ const SneakerAuthSystem: React.FC = () => {
             requiredMark={false}
           >
             <Form.Item
+              label="Package Type"
+              name="package_type"
+              rules={[
+                { required: true, message: 'Please select package type' },
+              ]}
+            >
+              <Select placeholder="Select package type" className="h-[48px]">
+                {getMySubscriptionList?.data?.map((item: SubscriptionItem) => (
+                  <Select.Option
+                    key={item._id}
+                    value={item.subscriptionId.subscription_period}
+                  >
+                    {item.subscriptionId.subscription_name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
               label="Sneaker Name"
               name="name"
               rules={[{ required: true, message: 'Please enter sneaker name' }]}
@@ -297,6 +333,18 @@ const SneakerAuthSystem: React.FC = () => {
             >
               <TextArea
                 placeholder="Enter description"
+                rows={5}
+                className="h-[48px]"
+              />
+            </Form.Item>
+            
+            <Form.Item
+              label="Geolocation"
+              name="geolocation"
+              rules={[{ required: true, message: 'Please enter geolocation' }]}
+            >
+              <TextArea
+                placeholder="Enter geolocation"
                 rows={5}
                 className="h-[48px]"
               />
@@ -428,6 +476,7 @@ const SneakerAuthSystem: React.FC = () => {
               <Text strong>Name:</Text>
               <Text>{form.getFieldValue('name')}</Text>
             </div>
+
             <div className="flex justify-between">
               <Text strong>Brand:</Text>
               <Text>{form.getFieldValue('brand')}</Text>

@@ -41,7 +41,7 @@ const Profile = () => {
           />
         </div>
 
-        <div className="space-y-2 flex items-center justify-center flex-col">
+        <div className=" flex items-center justify-center flex-col ">
           <div className="font-bold text-2xl ">Carlton Member</div>
           <div className="flex items-center gap-2">
             <MdOutlineLocationOn />
@@ -51,10 +51,16 @@ const Profile = () => {
             <BiPurchaseTag />
             Pro Plan
           </div>
+
+          <div className="bg-white overflow-hidden !text-black font-bold px-3 py-2 rounded-lg">
+            <Link href={'/my-subscription'} className=" px-32 py-2 rounded-lg">
+              View All Packages
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="responsive-width mx-auto">
+      <div className="responsive-width mx-auto !mt-56">
         <div className="mt-48 mx-auto  flex items-center justify-center text-center ">
           <Link
             href={'/authentication'}
