@@ -23,6 +23,7 @@ import {
 import Image from 'next/image'
 import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface'
 import { useGetAllMySubscriptionListQuery } from '@/redux/subscriptionsApis'
+import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
 
 const { Dragger } = Upload
 const { TextArea } = Input
@@ -256,6 +257,28 @@ const SneakerAuthSystem: React.FC = () => {
     </div>
   )
 
+  type Geolocation = {
+    coordinates: [number, number]
+  }
+
+  function LocationPicker({
+    onSelect,
+  }: {
+    onSelect: (coords: Geolocation) => void
+  }) {
+    const [position, setPosition] = useState<[number, number] | null>(null)
+
+    useMapEvents({
+      click(e) {
+        const coords: [number, number] = [e.latlng.lat, e.latlng.lng]
+        setPosition(coords)
+        onSelect({ coordinates: coords })
+      },
+    })
+
+    return position ? <Marker position={position} /> : null
+  }
+
   const FormStep: React.FC = () => (
     <div
       className=" bg-transparent flex items-center justify-center mt-20"
@@ -337,17 +360,25 @@ const SneakerAuthSystem: React.FC = () => {
                 className="h-[48px]"
               />
             </Form.Item>
-            
+
             <Form.Item
               label="Geolocation"
               name="geolocation"
-              rules={[{ required: true, message: 'Please enter geolocation' }]}
+              rules={[{ required: true, message: 'Please select geolocation' }]}
             >
-              <TextArea
-                placeholder="Enter geolocation"
-                rows={5}
-                className="h-[48px]"
-              />
+              <div className="h-[300px] w-full rounded-lg overflow-hidden">
+                <MapContainer
+                  zoom={12}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <LocationPicker
+                    onSelect={(geo) => {
+                      form.setFieldsValue({ geolocation: geo })
+                    }}
+                  />
+                </MapContainer>
+              </div>
             </Form.Item>
 
             <div className="text-center pt-4">
