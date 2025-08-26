@@ -44,6 +44,13 @@ const snekersProfileApis = baseApis.injectEndpoints({
       }),
       keepUnusedDataFor: 300,
     }),
+    getResaleValue: builder.query({
+      query: ({ brandName }) => ({
+        url: `/user_sneakers_profile/find_specific_average_resale_value_per_brand_model/${brandName}`,
+        method: 'GET',
+      }),
+      keepUnusedDataFor: 300,
+    }),
   }),
   overrideExisting: false,
 })
@@ -55,5 +62,6 @@ export const {
   useGetReviewSneakerQuery,
   useGetAllSneakerQuery,
   useGetRealTimeMarketValueQuery,
+  useGetResaleValueQuery,
 } = snekersProfileApis
 export default snekersProfileApis

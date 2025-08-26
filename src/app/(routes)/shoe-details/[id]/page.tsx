@@ -46,7 +46,7 @@ const ShoeDetails = () => {
         ></div>
 
         <div className="responsive-width mx-auto flex items-center z-20 h-full relative  font-bold ">
-          <section className="max-w-[500px] w-full ">
+          <section className="w-3/4  ">
             {/* <Link
               href={'/profile/1'}
               className="text-2xl flex items-center gap-2 hover:text-blue-400 cursor-pointer"
@@ -61,7 +61,14 @@ const ShoeDetails = () => {
               {shoeDetailsData?.description}
             </div>
           </section>
-          <section></section>
+          <Link
+            href={`/resale?brand=${shoeDetailsData?.brand_name}`}
+            className="w-1/4 flex items-end justify-end"
+          >
+            <div className="text-xl flex items-center gap-2 hover:text-blue-700 cursor-pointer px-10 py-3 bg-white text-black">
+              View Resale
+            </div>
+          </Link>
         </div>
       </div>
 
