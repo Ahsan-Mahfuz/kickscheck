@@ -1,9 +1,12 @@
+'use client'
 import React from 'react'
 import { Tabs } from 'antd'
 import type { TabsProps } from 'antd'
 import PassCard from './PassCard'
 import RecentPosts from './RecentPosts'
 import NotPassCard from './NotPassCard'
+import RealTimeMarketValueChecking from './RealTimeMarketValueChecking'
+
 const MyCardItems = () => {
   const items: TabsProps['items'] = [
     {
@@ -21,7 +24,15 @@ const MyCardItems = () => {
       label: <div className="font-bold text-white text-xl">Not Pass</div>,
       children: <NotPassCard />,
     },
+    {
+      key: '4',
+      label: (
+        <div className="font-bold text-white text-xl">Market Value</div>
+      ),
+      children: <RealTimeMarketValueChecking />,
+    },
   ]
+
   return <Tabs defaultActiveKey="1" items={items} />
 }
 

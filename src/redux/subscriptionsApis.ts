@@ -26,6 +26,12 @@ const subscriptionsApis = baseApis.injectEndpoints({
         method: 'GET',
       }),
     }),
+    getMySubscriptionBadge: builder.query({
+      query: ({ id }) => ({
+        url: `/current_subscribed_users/subscription_ways_badge/${id}`,
+        method: 'GET',
+      }),
+    }),
     postSneakersProfile: builder.mutation({
       query: ({ data, id }) => ({
         url: `/user_sneakers_profile/create_sneakers_profile/${id}`,
@@ -42,5 +48,7 @@ export const {
   useGetFreeSubscriptionQuery,
   useGetAllMySubscriptionQuery,
   useGetAllMySubscriptionListQuery,
+  useGetMySubscriptionBadgeQuery,
+  usePostSneakersProfileMutation,
 } = subscriptionsApis
 export default subscriptionsApis

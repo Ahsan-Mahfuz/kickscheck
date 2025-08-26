@@ -16,9 +16,16 @@ const profileApis = baseApis.injectEndpoints({
         method: 'GET',
       }),
     }),
+    updateProfile: builder.mutation({
+      query: (data) => ({
+        url: '/auth/update_my_profile',
+        method: 'PATCH',
+        body: data,
+      }),
+    }),
   }),
   overrideExisting: false,
 })
 
-export const { useGetProfileQuery } = profileApis
+export const { useGetProfileQuery, useUpdateProfileMutation } = profileApis
 export default profileApis

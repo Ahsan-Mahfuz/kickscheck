@@ -15,15 +15,11 @@ const Navbar = () => {
   const [token, setToken] = useState('')
 
   useEffect(() => {
-    const cookieToken = Cookies.get('token')
-    const localToken = localStorage.getItem('token')
-    const finalToken = cookieToken || localToken || ''
-    setToken(finalToken)
+    const localToken = localStorage.getItem('token') || ''
+    setToken(localToken)
   }, [])
 
-  const { data: profileData, error } = useGetProfileQuery(undefined, {
-    skip: !token, 
-  })
+  const { data: profileData, error } = useGetProfileQuery(undefined)
 
   const getLinkClass = (path: string) =>
     pathname === path ? ' font-semibold text-yellow-500' : 'no-underline'
@@ -66,9 +62,11 @@ const Navbar = () => {
               <Link href="/pricing" className={getLinkClass('/pricing')}>
                 Pricing
               </Link>
-              <Link href="/explore" className={getLinkClass('/explore')}>
-                Explore
-              </Link>
+              {token && (
+                <Link href="/explore" className={getLinkClass('/explore')}>
+                  Explore
+                </Link>
+              )}
               <Link href="/contact-us" className={getLinkClass('/contact-us')}>
                 Contact
               </Link>

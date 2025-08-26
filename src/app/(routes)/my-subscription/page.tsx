@@ -14,7 +14,7 @@ const MySubscription = () => {
 
   if (isLoading)
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-green-900 to-slate-900 flex items-center justify-center">
         <div className="relative">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
           <div className="absolute inset-0 w-16 h-16 border-4 border-blue-400 border-b-transparent rounded-full animate-spin animate-reverse"></div>
@@ -35,8 +35,9 @@ const MySubscription = () => {
       </div>
     )
 
-  const handleClickSubscription = (id: string) => {
+  const handleClickSubscription = (id: string, realId: string) => {
     localStorage.setItem('subscriptionId', id)
+    localStorage.setItem('realTimeMarketValue', realId)
     navigate.push(`/profile`)
   }
 
@@ -146,9 +147,12 @@ const MySubscription = () => {
                           ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-purple-500/25 hover:scale-105 opacity-60'
                           : 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white shadow-lg hover:shadow-red-500/25 hover:scale-105 cursor-not-allowed'
                       }`}
-                      onClick={() =>
-                        handleClickSubscription(sub.subscriptionId._id)
-                      }
+                      onClick={() => {
+                        handleClickSubscription(
+                          sub.subscriptionId._id,
+                          sub?._id
+                        )
+                      }}
                     >
                       Go With {sub.subscriptionId.subscription_name}
                     </div>

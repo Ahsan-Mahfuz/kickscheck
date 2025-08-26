@@ -15,7 +15,7 @@ import { MdOutlineStar } from 'react-icons/md'
 
 interface Items {
   _id: string
-  photoUrl: string
+  photoUrl?: string
 }
 const ShoeDetails = () => {
   const router = usePathname()
@@ -72,7 +72,7 @@ const ShoeDetails = () => {
               src={`${imageUrl}/${shoeDetailsData?.photo[0].photoUrl}`}
               alt="shoe"
               className="max-w-[300px] h-full w-full object-cover"
-              width={5000}
+              width={5000}  
               height={5000}
             />
           </div>
@@ -104,7 +104,7 @@ const ShoeDetails = () => {
           {shoeDetailsData?.photo.slice(1).map((item: Items, index: number) => (
             <div key={index}>
               <Image
-                src={`${imageUrl}/${item.photoUrl}`}
+                src={`${imageUrl}/${item?.photoUrl}`}
                 alt="shoe"
                 className="  w-[300px] h-[300px] object-cover"
                 width={5000}
@@ -121,44 +121,7 @@ const ShoeDetails = () => {
         </div>
 
         <div className="mt-5 ">
-          {shoeReview?.data?.all_specifc_review?.map(
-            (item: any, index: number) => (
-              <div
-                key={item._id || index}
-                className="p-4 border rounded-md mb-3 shadow-sm"
-              >
-                {/* User Info */}
-                <div className="flex items-center gap-3">
-                  <Image
-                    src={`${
-                      item?.userId?.photo
-                        ? `${imageUrl}/${item?.userId?.photo}`
-                        : '/default.jpg'
-                    }`}
-                    alt={item?.userId?.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                    width={5000}
-                    height={5000}
-                  />
-                  <div>
-                    <p className="font-semibold">{item?.userId?.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(item.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Rating */}
-                <p className="mt-2 text-yellow-600 font-medium">
-                  ⭐ {item?.rating}
-                </p>
-
-                {/* Review */}
-                <p className="mt-1 text-gray-300">{item?.review}</p>
-              </div>
-            )
-          )}
-          {/* <Comments /> */}
+          <Comments />
         </div>
       </section>
     </div>

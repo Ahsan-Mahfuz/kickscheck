@@ -82,6 +82,19 @@ const authApis = baseApis.injectEndpoints({
         body: data,
       }),
     }),
+    changePassword: builder.mutation<
+      any,
+      {
+        newpassword: string
+        oldpassword: string
+      }
+    >({
+      query: (data) => ({
+        url: '/user/change_password',
+        method: 'PATCH',
+        body: data,
+      }),
+    }),
   }),
   overrideExisting: false,
 })
@@ -92,7 +105,8 @@ export const {
   useVerifyForgetUserMutation,
   useSignInMutation,
   useForgetPasswordMutation,
-  useSetNewPasswordMutation,  
+  useSetNewPasswordMutation,
+  useChangePasswordMutation,
 } = authApis
 
 export default authApis

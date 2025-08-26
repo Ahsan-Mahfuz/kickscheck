@@ -14,14 +14,14 @@ interface ShoeCardProps {
   id: string
   sneakerName: string
   brandName: string
-  photos: Photo[]
+  photos: Photo
   pass: boolean
   averageRating: number
   totalReviews: number
   createdAt: string
 }
 
-const ShoeCard: React.FC<ShoeCardProps> = ({
+const ShoeCardExplore: React.FC<ShoeCardProps> = ({
   id,
   sneakerName,
   brandName,
@@ -41,7 +41,7 @@ const ShoeCard: React.FC<ShoeCardProps> = ({
   }
 
   return (
-    <Link href={`/shoe-details/${id}`}>
+    <Link href={`/explore/${id}`}>
       <Card
         hoverable
         className="w-full"
@@ -49,7 +49,7 @@ const ShoeCard: React.FC<ShoeCardProps> = ({
           <div className="relative">
             <Image
               alt={sneakerName}
-              src={`${imageUrl}/${photos?.[0]?.photoUrl}`}
+              src={`${imageUrl}/${photos?.photoUrl}`}
               className="h-48 w-full object-cover"
               width={5000}
               height={5000}
@@ -79,14 +79,10 @@ const ShoeCard: React.FC<ShoeCardProps> = ({
           <p className="text-sm text-gray-500">
             Posted: {formatDate(createdAt)}
           </p>
-
-          {photos?.length > 1 && (
-            <p className="text-sm text-blue-500">{photos.length} photos</p>
-          )}
         </div>
       </Card>
     </Link>
   )
 }
 
-export default ShoeCard
+export default ShoeCardExplore

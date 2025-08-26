@@ -1,12 +1,36 @@
+'use client'
 import MyCardItems from '@/components/profile/MyCardItems'
+import { imageUrl } from '@/redux/main/server'
+import { useGetProfileQuery } from '@/redux/profileApis'
+import { useGetMySubscriptionBadgeQuery } from '@/redux/subscriptionsApis'
 import Image from 'next/image'
 import Link from 'next/link'
-import React from 'react'
+import React, { use, useEffect } from 'react'
 import { BiPurchaseTag } from 'react-icons/bi'
 import { CiEdit } from 'react-icons/ci'
+import { FaPhoneAlt } from 'react-icons/fa'
 import { MdOutlineLocationOn } from 'react-icons/md'
 
-const Profile = () => {
+interface ProfileData {
+  name: string
+  photo?: string
+  address?: string
+  phoneNumber?: string
+}
+
+const Profile: React.FC = () => {
+  const { data: getProfile } = useGetProfileQuery()
+  const profile: ProfileData | undefined = getProfile?.data
+  const [id, setId] = React.useState('')
+  useEffect(() => {
+    const id = localStorage.getItem('subscriptionId')
+    if (id) {
+      setId(id)
+    }
+  }, [])
+  const { data: getMyBadge } = useGetMySubscriptionBadgeQuery({
+    id: id,
+  })
   return (
     <div className="relative">
       <div
@@ -22,48 +46,64 @@ const Profile = () => {
         }}
       >
         <div
-          className="absolute inset-0  bg-green-950 opacity-30 z-10"
+          className="absolute inset-0 bg-green-950 opacity-30 z-10"
           style={{ pointerEvents: 'none' }}
         ></div>
       </div>
 
-      <Link href={'/edit-profile'} className="!z-50 absolute top-0 right-0 ">
+      <Link href="/edit-profile" className="!z-50 absolute top-0 right-0">
         <CiEdit className="text-white text-5xl hover:text-yellow-400 cursor-pointer" />
       </Link>
+
       <div className="!z-50 absolute mx-auto top-[600px] w-full flex flex-col items-center justify-center !pb-50">
         <div>
           <Image
-            src="/shoe/shoe-2.jpg"
-            alt="shoe"
+            src={
+              profile?.photo
+                ? `${imageUrl}/${profile.photo}`
+                : '/shoe/default.jpg'
+            }
+            alt="profile"
             width={5000}
             height={5000}
-            className="w-[200px]  h-[200px] flex items-center justify-center rounded-full"
+            className="w-[200px] h-[200px] flex items-center justify-center rounded-full object-cover "
           />
         </div>
 
-        <div className=" flex items-center justify-center flex-col ">
-          <div className="font-bold text-2xl ">Carlton Member</div>
-          <div className="flex items-center gap-2">
-            <MdOutlineLocationOn />
-            Washington, USA
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center flex-col ">
+          <div className="font-bold text-2xl">{profile?.name}</div>
+
+          {profile?.address && (
+            <div className="flex items-center gap-2">
+              <MdOutlineLocationOn />
+              {profile.address}
+            </div>
+          )}
+
+          {profile?.phoneNumber && (
+            <div className="flex items-center gap-2">
+              <FaPhoneAlt />
+              {profile.phoneNumber}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 bg-gree">
             <BiPurchaseTag />
-            Pro Plan
+            {getMyBadge?.data?.subscriptionId?.subscription_period} Badge
           </div>
 
-          <div className="bg-white overflow-hidden !text-black font-bold px-3 py-2 rounded-lg">
-            <Link href={'/my-subscription'} className=" px-32 py-2 rounded-lg">
+          <div className="bg-white !mt-5  !text-black font-bold px-3 py-2 rounded-lg">
+            <Link href="/my-subscription" className="px-32 py-2 rounded-lg">
               View All Packages
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="responsive-width mx-auto !mt-56">
-        <div className="mt-48 mx-auto  flex items-center justify-center text-center ">
+      <div className=" mx-auto !mt-56 responsive-width">
+        <div className="mt-64 !mb-20 mx-auto flex items-center justify-center text-center">
           <Link
-            href={'/authentication'}
+            href="/authentication"
             className="normal-button-bg-color px-32 py-2 rounded-lg"
           >
             Try to Check

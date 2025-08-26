@@ -1,10 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Password from '../../../components/editProfile/Password'
 import {
   Button,
   Form,
-  Image,
   Input,
   message,
   Upload,
@@ -13,7 +12,6 @@ import {
   Divider,
 } from 'antd'
 import {
-  UploadOutlined,
   LoadingOutlined,
   UserOutlined,
   MailOutlined,
@@ -23,80 +21,109 @@ import {
   SaveOutlined,
   CameraOutlined,
 } from '@ant-design/icons'
+import {
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+} from '@/redux/profileApis'
+import { imageUrl } from '@/redux/main/server'
+
+interface ProfileData {
+  name: string
+  email: string
+  phone?: string
+  address?: string
+  photo?: string
+}
 
 const EditProfile = () => {
   const [activeTab, setActiveTab] = useState('profile')
+  const { data: getProfile, isLoading } = useGetProfileQuery()
+  const [updateProfile] = useUpdateProfileMutation()
   const [form] = Form.useForm()
   const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    fullName: 'Ahsan Mahfuz',
-    email: 'ahsanmahfuz@gmail.com',
-    phone: '+27 55745 2567 125',
-    image: null,
-    address: '123 Main Street, City, Country',
-  })
+  const [imageFile, setImageFile] = useState<File | null>(null)
 
-  const handleUpdate = () => {
-    if (isEditing) {
-      form
-        .validateFields()
-        .then((values) => {
-          setFormData({ ...formData, ...values })
-          message.success('Profile updated successfully!')
-          setIsEditing(false)
-        })
-        .catch(() => {
-          message.error('Please complete the form properly.')
-        })
-    } else {
-      setIsEditing(true)
+  const profile: ProfileData | undefined = getProfile?.data
+
+  // Populate form when profile data loads
+  useEffect(() => {
+    if (profile) {
+      form.setFieldsValue({
+        fullName: profile.name,
+        email: profile.email,
+        phone: profile.phone || '',
+        address: profile.address || '',
+      })
+      if (profile.photo) setImageFile(profile.photo as any) // Keep photo URL if exists
     }
+  }, [profile, form])
+
+  const handleImageUpload = (info: any) => {
+    const file = info.file.originFileObj
+    if (!(file instanceof File)) {
+      message.error('Invalid file type. Please upload a valid image.')
+      return
+    }
+    setImageLoading(true)
+    setTimeout(() => {
+      setImageFile(file)
+      setImageLoading(false)
+      message.success('Profile image selected!')
+    }, 500)
+    return false
   }
 
-  const handleImageUpload = async (info) => {
-    setImageLoading(true)
-
-    const uploadedImage = info.file.originFileObj || info.file
-
-    if (!(uploadedImage instanceof File)) {
-      message.error('Invalid file type. Please upload a valid image.')
-      setImageLoading(false)
+  const handleUpdate = async () => {
+    if (!isEditing) {
+      setIsEditing(true)
       return
     }
 
-    setTimeout(() => {
-      setImageLoading(false)
+    try {
+      const values = await form.validateFields()
 
-      try {
-        const imageURL = URL.createObjectURL(uploadedImage)
-
-        setFormData({
-          ...formData,
-          image: imageURL,
+      const formData = new FormData()
+      formData.append(
+        'data',
+        JSON.stringify({
+          name: values.fullName,
+          phoneNumber: values.phone,
+          address: values.address,
         })
-
-        message.success('Profile image updated successfully!')
-      } catch (error) {
-        console.error('Error creating image URL:', error)
-        message.error('Error displaying image.')
+      )
+      if (imageFile instanceof File) {
+        formData.append('file', imageFile)
       }
-    }, 2000)
+
+      await updateProfile(formData).unwrap()
+      message.success('Profile updated successfully!')
+      setIsEditing(false)
+    } catch (err) {
+      console.error(err)
+      message.error('Failed to update profile. Please try again.')
+    }
   }
 
+  if (isLoading) return <p>Loading...</p>
+
   return (
-    <div className="min-h-screen  py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header Card */}
         <Card className="mb-8 shadow-lg border-0 rounded-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-[#2d4e09] ,  to-[#0d1802] -mx-6 -mt-6 mb-6 px-6 pt-8 pb-12 relative">
+          <div className="bg-gradient-to-r from-[#2d4e09] to-[#0d1802] -mx-6 -mt-6 mb-6 px-6 pt-8 pb-12 relative">
             <div className="absolute inset-0 bg-black/10"></div>
             <div className="relative z-10 flex flex-col items-center text-white">
               <div className="relative group">
                 <Avatar
                   size={120}
-                  src={formData.image}
+                  src={
+                    imageFile instanceof File
+                      ? URL.createObjectURL(imageFile)
+                      : profile?.photo
+                      ? `${imageUrl}/${profile.photo}`
+                      : undefined
+                  }
                   icon={<UserOutlined />}
                   className="border-4 border-white shadow-2xl transition-all duration-300 group-hover:scale-105"
                 />
@@ -124,12 +151,10 @@ const EditProfile = () => {
                   </Upload>
                 )}
               </div>
-              <h1 className="text-3xl font-bold mt-4 mb-2">Jerome Smith</h1>
-              <p className="text-blue-100 text-lg">Software Developer</p>
+              <h1 className="text-3xl font-bold mt-4 mb-2">{profile?.name}</h1>
             </div>
           </div>
 
-          {/* Tab Navigation */}
           <div className="flex justify-center mb-6">
             <div className="bg-gray-100 p-1 rounded-xl flex gap-1">
               <button
@@ -158,7 +183,6 @@ const EditProfile = () => {
           </div>
         </Card>
 
-        {/* Profile Form */}
         {activeTab === 'profile' && (
           <Card className="shadow-lg border-0 rounded-2xl">
             <div className="p-6">
@@ -170,24 +194,13 @@ const EditProfile = () => {
                   type={isEditing ? 'primary' : 'default'}
                   icon={isEditing ? <SaveOutlined /> : <EditOutlined />}
                   onClick={handleUpdate}
-                  disabled={loading}
                   size="large"
-                  className={`px-6 py-2 h-auto font-semibold rounded-lg transition-all duration-300 ${
-                    isEditing
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 border-0 shadow-lg hover:shadow-xl'
-                      : 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50'
-                  }`}
                 >
                   {isEditing ? 'Save Changes' : 'Edit Profile'}
                 </Button>
               </div>
 
-              <Form
-                form={form}
-                layout="vertical"
-                initialValues={formData}
-                className="space-y-6"
-              >
+              <Form form={form} layout="vertical" className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Form.Item
                     label={
@@ -199,21 +212,12 @@ const EditProfile = () => {
                     name="fullName"
                     rules={[
                       {
-                        required: true,
+                        required: false,
                         message: 'Please enter your full name',
                       },
                     ]}
                   >
-                    <Input
-                      disabled={!isEditing}
-                      size="large"
-                      className={`rounded-lg border-2 transition-all duration-300 ${
-                        isEditing
-                          ? 'border-blue-300 focus:border-blue-500 shadow-sm'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}
-                      placeholder="Enter your full name"
-                    />
+                    <Input disabled={!isEditing} size="large" />
                   </Form.Item>
 
                   <Form.Item
@@ -225,20 +229,11 @@ const EditProfile = () => {
                     }
                     name="email"
                     rules={[
-                      { required: true, message: 'Please enter your email' },
+                      { required: false, message: 'Please enter your email' },
                       { type: 'email', message: 'Please enter a valid email' },
                     ]}
                   >
-                    <Input
-                      disabled={!isEditing}
-                      size="large"
-                      className={`rounded-lg border-2 transition-all duration-300 ${
-                        isEditing
-                          ? 'border-blue-300 focus:border-blue-500 shadow-sm'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}
-                      placeholder="Enter your email address"
-                    />
+                    <Input disabled={true} size="large" />
                   </Form.Item>
 
                   <Form.Item
@@ -251,21 +246,12 @@ const EditProfile = () => {
                     name="phone"
                     rules={[
                       {
-                        required: true,
+                        required: false,
                         message: 'Please enter your phone number',
                       },
                     ]}
                   >
-                    <Input
-                      disabled={!isEditing}
-                      size="large"
-                      className={`rounded-lg border-2 transition-all duration-300 ${
-                        isEditing
-                          ? 'border-blue-300 focus:border-blue-500 shadow-sm'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}
-                      placeholder="Enter your phone number"
-                    />
+                    <Input disabled={!isEditing} size="large" />
                   </Form.Item>
 
                   <Form.Item
@@ -280,16 +266,7 @@ const EditProfile = () => {
                       { required: true, message: 'Please enter your address' },
                     ]}
                   >
-                    <Input
-                      disabled={!isEditing}
-                      size="large"
-                      className={`rounded-lg border-2 transition-all duration-300 ${
-                        isEditing
-                          ? 'border-blue-300 focus:border-blue-500 shadow-sm'
-                          : 'border-gray-200 bg-gray-50'
-                      }`}
-                      placeholder="Enter your address"
-                    />
+                    <Input disabled={!isEditing} size="large" />
                   </Form.Item>
                 </div>
 
@@ -303,7 +280,6 @@ const EditProfile = () => {
                           setIsEditing(false)
                           form.resetFields()
                         }}
-                        className="px-8 py-2 h-auto font-semibold rounded-lg border-2 border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-all duration-300"
                       >
                         Cancel
                       </Button>
@@ -311,10 +287,7 @@ const EditProfile = () => {
                         type="primary"
                         size="large"
                         onClick={handleUpdate}
-                        disabled={loading}
-                        className="px-8 py-2 h-auto font-semibold rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
                       >
-                        <SaveOutlined className="mr-2" />
                         Save Changes
                       </Button>
                     </div>
@@ -325,7 +298,6 @@ const EditProfile = () => {
           </Card>
         )}
 
-        {/* Password Change */}
         {activeTab === 'password' && (
           <Card className="shadow-lg border-0 rounded-2xl">
             <div className="p-6">

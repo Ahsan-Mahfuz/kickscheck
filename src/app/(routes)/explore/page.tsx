@@ -1,7 +1,27 @@
+'use client'
 import ShoeCard from '@/components/shoeCard/ShoeCard'
+import ShoeCardExplore from '@/components/shoeCardExplore/ShoeCardExplore'
+import { useGetAllSneakerQuery } from '@/redux/snekersProfileApis'
 import React from 'react'
+interface Photo {
+  _id: string
+  photoUrl: string
+}
 
+interface Sneaker {
+  _id: string
+  photo: Photo
+  sneaker_name: string
+  brand_name: string
+  isCheckedAI: boolean
+  averageRating: number
+  totalReviews: number
+  createdAt: string
+}
 const Explore = () => {
+  const { data: getAllSneakersData } = useGetAllSneakerQuery(undefined)
+  const sneakersData: Sneaker[] = getAllSneakersData?.data ?? []
+
   return (
     <>
       <div
@@ -37,20 +57,19 @@ const Explore = () => {
       </div>
 
       <section className="mt-10 my-20 grid grid-cols-3 gap-5 responsive-width mx-auto">
-        <ShoeCard pass={false} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={false} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={false} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={false} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={false} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={true} />
-        <ShoeCard pass={false} />
-        <ShoeCard pass={true} />
+        {sneakersData.map((sneaker) => (
+          <ShoeCardExplore
+            key={sneaker._id}
+            id={sneaker._id}
+            sneakerName={sneaker.sneaker_name}
+            brandName={sneaker.brand_name}
+            photos={sneaker?.photo}
+            pass={sneaker.isCheckedAI}
+            averageRating={sneaker.averageRating}
+            totalReviews={sneaker.totalReviews}
+            createdAt={sneaker.createdAt}
+          />
+        ))}
       </section>
     </>
   )

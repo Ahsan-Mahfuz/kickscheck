@@ -8,11 +8,15 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons'
 import { useState } from 'react'
+import { useChangePasswordMutation } from '@/redux/authApis'
+import toast from 'react-hot-toast'
 
 const Password = () => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState(0)
+
+  const [changePass] = useChangePasswordMutation()
 
   const handleCancelClick = () => {
     form.resetFields()
@@ -23,17 +27,15 @@ const Password = () => {
     try {
       setLoading(true)
       const values = await form.validateFields()
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      console.log('Password Updated:', values)
-      message.success('Password updated successfully!')
+      const res = await changePass({
+        newpassword: values.newPassword,
+        oldpassword: values.currentPassword,
+      }).unwrap()
+      toast.success(res?.data?.message)
       form.resetFields()
       setPasswordStrength(0)
     } catch (error) {
-      console.error('Validation Failed:', error)
-      message.error('Please check all fields and try again')
+      toast.error(error?.data?.message)
     } finally {
       setLoading(false)
     }

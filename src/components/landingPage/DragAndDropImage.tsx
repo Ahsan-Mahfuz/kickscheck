@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Upload,
   Modal,
@@ -12,6 +12,9 @@ import {
   Space,
   Divider,
   Select,
+  InputNumber,
+  message,
+  Radio,
 } from 'antd'
 import { CiImageOn } from 'react-icons/ci'
 import {
@@ -22,7 +25,10 @@ import {
 } from 'react-icons/ai'
 import Image from 'next/image'
 import type { UploadFile, UploadChangeParam } from 'antd/es/upload/interface'
-import { useGetAllMySubscriptionListQuery } from '@/redux/subscriptionsApis'
+import {
+  useGetAllMySubscriptionListQuery,
+  usePostSneakersProfileMutation,
+} from '@/redux/subscriptionsApis'
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
 
 const { Dragger } = Upload
@@ -38,10 +44,16 @@ interface UploadedImage {
 }
 
 interface FormValues {
-  name: string
-  brand: string
-  code: string
+  package_type: string
+  sneaker_name: string
+  brand_name: string
+  sneaker_code: string
   description: string
+  verification_method: 'ai' | 'human'
+  marketvalue?: number
+  geolocation?: {
+    coordinates: [number, number]
+  }
 }
 
 interface AIResult {
@@ -52,7 +64,7 @@ interface AIResult {
 interface SubmissionData {
   images: UploadedImage[]
   sneakerDetails: FormValues
-  verificationMethod: 'ai' | 'human' | null
+  verificationMethod: 'ai' | 'human'
   aiResult: AIResult | null
 }
 
@@ -68,27 +80,78 @@ type SubscriptionItem = {
   id: string
 }
 
-type StepType = 'upload' | 'form' | 'verification' | 'result'
-type VerificationMethodType = 'ai' | 'human' | null
+type StepType = 'upload' | 'form' | 'processing' | 'result'
 
 const SneakerAuthSystem: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<StepType>('upload')
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [form] = Form.useForm<FormValues>()
-  const [verificationMethod, setVerificationMethod] =
-    useState<VerificationMethodType>(null)
   const [aiResult, setAiResult] = useState<AIResult | null>(null)
-  const [showModal, setShowModal] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
 
   const { data: getMySubscriptionList } =
     useGetAllMySubscriptionListQuery(undefined)
 
-  const handleUpload = (info: UploadChangeParam<UploadFile>) => {
+  const [postSneakersProfile, { isLoading: isSubmitting }] =
+    usePostSneakersProfileMutation()
+
+  // Get available subscriptions
+  const availableSubscriptions: SubscriptionItem[] =
+    getMySubscriptionList?.data?.filter(
+      (item: SubscriptionItem) => item.isAvailable
+    ) || []
+
+  // Watch form values to conditionally show fields
+  const packageType = Form.useWatch('package_type', form)
+  const verificationMethod = Form.useWatch('verification_method', form)
+
+  // Check if geolocation should be shown based on package
+  const shouldShowGeolocation = (): boolean => {
+    return (
+      packageType === 'pro_monthly' ||
+      packageType === 'collector_monthly' ||
+      packageType === 'pro_yearly' ||
+      packageType === 'collector_yearly'
+    )
+  }
+
+  // Check if market value should be shown (only for human verification)
+  const shouldShowMarketValue = (): boolean => {
+    return verificationMethod === 'human'
+  }
+
+  // Custom upload validation
+  const beforeUpload = (file: File, fileList: File[]): boolean => {
+    const totalFiles = uploadedImages.length + fileList.length
+
+    if (totalFiles > 5) {
+      message.error('You can upload maximum 5 images')
+      return false
+    }
+
+    // Check file type
+    const isImage = file.type.startsWith('image/')
+    if (!isImage) {
+      message.error('You can only upload image files!')
+      return false
+    }
+
+    // Check file size (max 5MB)
+    const isLessThan5M = file.size / 1024 / 1024 < 5
+    if (!isLessThan5M) {
+      message.error('Image must be smaller than 5MB!')
+      return false
+    }
+
+    return true
+  }
+
+  const handleUpload = (info: UploadChangeParam<UploadFile>): void => {
     const { fileList } = info
 
     const newFiles: UploadedImage[] = fileList
       .filter((file) => file.originFileObj)
+      .slice(0, 5) // Ensure max 5 files
       .map((file, index) => ({
         uid: file.uid || `file-${Date.now()}-${index}`,
         name: file.name || `image-${index}`,
@@ -102,7 +165,10 @@ const SneakerAuthSystem: React.FC = () => {
       const uniqueNewFiles = newFiles.filter(
         (file) => !existingUids.includes(file.uid)
       )
-      return [...prev, ...uniqueNewFiles]
+      const combinedFiles = [...prev, ...uniqueNewFiles]
+
+      // Ensure we don't exceed 5 images
+      return combinedFiles.slice(0, 5)
     })
   }
 
@@ -111,61 +177,137 @@ const SneakerAuthSystem: React.FC = () => {
   }
 
   const continueToForm = (): void => {
-    if (uploadedImages.length > 0) {
-      setCurrentStep('form')
+    if (uploadedImages.length === 0) {
+      message.error('Please upload at least 1 image')
+      return
     }
+    if (uploadedImages.length > 5) {
+      message.error('Maximum 5 images allowed')
+      return
+    }
+    setCurrentStep('form')
   }
 
-  const handleFormSubmit = (values: FormValues): void => {
-    console.log('Form values:', values)
-    setCurrentStep('verification')
-  }
+  const handleFormSubmit = async (values: FormValues): Promise<void> => {
+    // Validate images before submission
+    if (uploadedImages.length === 0) {
+      message.error('Please upload at least 1 image')
+      return
+    }
+    if (uploadedImages.length > 5) {
+      message.error('Maximum 5 images allowed')
+      return
+    }
 
-  const handleAICheck = (): void => {
-    setVerificationMethod('ai')
-    setLoading(true)
+    try {
+      setLoading(true)
+      console.log('Form submission started')
 
-    setTimeout(() => {
-      const mockAiResult: AIResult = {
-        authenticity: Math.floor(Math.random() * 30) + 70,
-        aiReview: Math.random() > 0.3 ? 'Pass' : 'Fail',
+      const selectedSubscription = availableSubscriptions.find(
+        (item: SubscriptionItem) =>
+          item.subscriptionId.subscription_period === values.package_type
+      )
+
+      if (!selectedSubscription) {
+        message.error('Invalid package selection')
+        setLoading(false)
+        return
       }
-      setAiResult(mockAiResult)
+
+      // Create FormData for proper file upload
+      const formData = new FormData()
+
+      // Add basic fields
+      formData.append('sneaker_name', values.sneaker_name)
+      formData.append('brand_name', values.brand_name)
+      formData.append('sneaker_code', values.sneaker_code)
+      formData.append('description', values.description)
+
+      // Convert boolean to string properly for FormData
+      const isAICheck = values.verification_method === 'ai'
+      formData.append('isCheckedAI', isAICheck ? 'true' : 'false')
+
+      // Add optional fields with proper type conversion
+      if (shouldShowMarketValue() && values.marketvalue) {
+        // Send as number, not string
+        formData.append('marketvalue', values.marketvalue.toString())
+      }
+
+      if (shouldShowGeolocation() && values.geolocation) {
+        formData.append('geolocation', JSON.stringify(values.geolocation))
+      }
+
+      // Add photos as files
+      uploadedImages.forEach((image, index) => {
+        if (image.originFileObj) {
+          formData.append('photo', image.originFileObj)
+        }
+      })
+
+      // Alternative: Send as JSON in data field instead of individual FormData fields
+      // This might work better with your backend validation
+      const jsonData = {
+        sneaker_name: values.sneaker_name,
+        brand_name: values.brand_name,
+        sneaker_code: values.sneaker_code,
+        description: values.description,
+        isCheckedAI: values.verification_method === 'ai',
+        ...(shouldShowMarketValue() &&
+          values.marketvalue && {
+            marketvalue: Number(values.marketvalue),
+          }),
+        ...(shouldShowGeolocation() &&
+          values.geolocation && {
+            geolocation: values.geolocation,
+          }),
+      }
+
+      // Clear FormData and use the JSON approach
+      const finalFormData = new FormData()
+
+      // Add the JSON data as a string field
+      finalFormData.append('data', JSON.stringify(jsonData))
+
+      // Add photos as files
+      uploadedImages.forEach((image, index) => {
+        if (image.originFileObj) {
+          finalFormData.append('photo', image.originFileObj)
+        }
+      })
+
+      // Log form data for debugging
+      console.log('FormData contents:')
+      console.log('JSON Data:', jsonData)
+
+      console.log(
+        'selectedSubscription=========================>',
+        selectedSubscription
+      )
+
+      const response = await postSneakersProfile({
+        data: finalFormData,
+        id: selectedSubscription.subscriptionId._id,
+      }).unwrap()
+
+      message.success('Sneaker profile submitted successfully!')
+      console.log('Submission response:', response)
+
+      // Reset form after successful submission
+      resetForm()
+    } catch (error) {
+      console.error('Submission error:', error)
+      message.error('Failed to submit sneaker profile. Please try again.')
+    } finally {
       setLoading(false)
-      setCurrentStep('result')
-    }, 3000)
-  }
-
-  const handleHumanCheck = (): void => {
-    setVerificationMethod('human')
-    setCurrentStep('result')
-  }
-
-  const handleFinalSubmit = (): void => {
-    setShowModal(true)
-  }
-
-  const submitToSuperAdmin = (): void => {
-    const formData = form.getFieldsValue()
-    const submissionData: SubmissionData = {
-      images: uploadedImages,
-      sneakerDetails: formData,
-      verificationMethod,
-      aiResult: verificationMethod === 'ai' ? aiResult : null,
     }
-
-    console.log('Submitting to Super Admin:', submissionData)
-
-    setShowModal(false)
-    resetForm()
   }
 
   const resetForm = (): void => {
     setCurrentStep('upload')
     setUploadedImages([])
-    setVerificationMethod(null)
     setAiResult(null)
     form.resetFields()
+    setLoading(false)
   }
 
   const UploadStep: React.FC = () => (
@@ -192,11 +334,15 @@ const SneakerAuthSystem: React.FC = () => {
               <div className="text-3xl text-white text-center">
                 Drag and drop image here or click to upload
               </div>
+              <div className="text-lg text-white text-center opacity-80">
+                Upload 1-5 images (Max 5MB each)
+              </div>
               <Dragger
                 multiple
                 listType="picture"
                 onChange={handleUpload}
                 showUploadList={false}
+                beforeUpload={beforeUpload}
                 className="w-full max-w-md"
               >
                 <div className="cursor-pointer px-20 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
@@ -207,7 +353,7 @@ const SneakerAuthSystem: React.FC = () => {
           ) : (
             <div>
               <Title level={1} className="text-center !text-white mb-6">
-                Uploaded Images
+                Uploaded Images ({uploadedImages.length}/5)
               </Title>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                 {uploadedImages.map((image) => (
@@ -227,18 +373,21 @@ const SneakerAuthSystem: React.FC = () => {
                     </button>
                   </div>
                 ))}
-                <Dragger
-                  multiple
-                  listType="picture"
-                  onChange={handleUpload}
-                  showUploadList={false}
-                  className="h-32 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg"
-                >
-                  <div className="text-center">
-                    <AiOutlineCloudUpload className="text-2xl text-white mx-auto mb-2" />
-                    <Text className="text-white">Add More</Text>
-                  </div>
-                </Dragger>
+                {uploadedImages.length < 5 && (
+                  <Dragger
+                    multiple
+                    listType="picture"
+                    onChange={handleUpload}
+                    showUploadList={false}
+                    beforeUpload={beforeUpload}
+                    className="h-32 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg"
+                  >
+                    <div className="text-center">
+                      <AiOutlineCloudUpload className="text-2xl text-white mx-auto mb-2" />
+                      <Text className="text-white">Add More</Text>
+                    </div>
+                  </Dragger>
+                )}
               </div>
               <div className="text-center">
                 <Button
@@ -246,6 +395,9 @@ const SneakerAuthSystem: React.FC = () => {
                   size="large"
                   onClick={continueToForm}
                   className="bg-green-600 hover:bg-green-700 border-green-600 px-8"
+                  disabled={
+                    uploadedImages.length === 0 || uploadedImages.length > 5
+                  }
                 >
                   Continue
                 </Button>
@@ -261,27 +413,25 @@ const SneakerAuthSystem: React.FC = () => {
     coordinates: [number, number]
   }
 
-  function LocationPicker({
-    onSelect,
-  }: {
-    onSelect: (coords: Geolocation) => void
-  }) {
-    const [position, setPosition] = useState<[number, number] | null>(null)
+  // const LocationPicker: React.FC<{
+  //   onSelect: (coords: Geolocation) => void
+  // }> = ({ onSelect }) => {
+  //   const [position, setPosition] = useState<[number, number] | null>(null)
 
-    useMapEvents({
-      click(e) {
-        const coords: [number, number] = [e.latlng.lat, e.latlng.lng]
-        setPosition(coords)
-        onSelect({ coordinates: coords })
-      },
-    })
+  //   useMapEvents({
+  //     click(e) {
+  //       const coords: [number, number] = [e.latlng.lat, e.latlng.lng]
+  //       setPosition(coords)
+  //       onSelect({ coordinates: coords })
+  //     },
+  //   })
 
-    return position ? <Marker position={position} /> : null
-  }
+  //   return position ? <Marker position={position} /> : null
+  // }
 
   const FormStep: React.FC = () => (
     <div
-      className=" bg-transparent flex items-center justify-center mt-20"
+      className="bg-transparent flex items-center justify-center mt-20"
       style={{
         backgroundImage: "url('/landing_page/s1.jpg')",
         backgroundSize: 'cover',
@@ -293,8 +443,8 @@ const SneakerAuthSystem: React.FC = () => {
         overflow: 'hidden',
       }}
     >
-      <div className="absolute inset-0 bg-green-950 opacity-60 " />
-      <div className="max-w-2xl w-full mx-auto p-8">
+      <div className="absolute inset-0 bg-green-950 opacity-60" />
+      <div className="max-w-2xl w-full mx-auto p-8 relative z-10">
         <Card className="shadow-lg">
           <Title level={2} className="text-center mb-8">
             Complete the Information
@@ -306,6 +456,7 @@ const SneakerAuthSystem: React.FC = () => {
             className="space-y-4"
             requiredMark={false}
           >
+            {/* Package Type - Always shown first */}
             <Form.Item
               label="Package Type"
               name="package_type"
@@ -314,7 +465,7 @@ const SneakerAuthSystem: React.FC = () => {
               ]}
             >
               <Select placeholder="Select package type" className="h-[48px]">
-                {getMySubscriptionList?.data?.map((item: SubscriptionItem) => (
+                {availableSubscriptions.map((item: SubscriptionItem) => (
                   <Select.Option
                     key={item._id}
                     value={item.subscriptionId.subscription_period}
@@ -325,9 +476,48 @@ const SneakerAuthSystem: React.FC = () => {
               </Select>
             </Form.Item>
 
+            {/* Verification Method - Always shown */}
+            <Form.Item
+              label="Verification Method"
+              name="verification_method"
+              rules={[
+                {
+                  required: true,
+                  message: 'Please select verification method',
+                },
+              ]}
+            >
+              <Radio.Group className="w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Radio.Button value="ai" className="h-auto p-4 text-center">
+                    <div className="flex flex-col items-center">
+                      <AiOutlineRobot className="text-3xl text-blue-500 mb-2" />
+                      <div className="font-semibold">AI Check</div>
+                      <div className="text-sm text-gray-500">
+                        Automated verification
+                      </div>
+                    </div>
+                  </Radio.Button>
+                  <Radio.Button
+                    value="human"
+                    className="h-auto p-4 text-center"
+                  >
+                    <div className="flex flex-col items-center">
+                      <AiOutlineUser className="text-3xl text-green-500 mb-2" />
+                      <div className="font-semibold">Human Check</div>
+                      <div className="text-sm text-gray-500">
+                        Expert verification
+                      </div>
+                    </div>
+                  </Radio.Button>
+                </div>
+              </Radio.Group>
+            </Form.Item>
+
+            {/* Basic sneaker information - Always shown */}
             <Form.Item
               label="Sneaker Name"
-              name="name"
+              name="sneaker_name"
               rules={[{ required: true, message: 'Please enter sneaker name' }]}
             >
               <Input placeholder="Enter sneaker name" className="h-[48px]" />
@@ -335,7 +525,7 @@ const SneakerAuthSystem: React.FC = () => {
 
             <Form.Item
               label="Brand Name"
-              name="brand"
+              name="brand_name"
               rules={[{ required: true, message: 'Please enter brand name' }]}
             >
               <Input placeholder="Enter brand name" className="h-[48px]" />
@@ -343,7 +533,7 @@ const SneakerAuthSystem: React.FC = () => {
 
             <Form.Item
               label="Sneaker Code"
-              name="code"
+              name="sneaker_code"
               rules={[{ required: true, message: 'Please enter sneaker code' }]}
             >
               <Input placeholder="Enter sneaker code" className="h-[48px]" />
@@ -354,41 +544,78 @@ const SneakerAuthSystem: React.FC = () => {
               name="description"
               rules={[{ required: true, message: 'Please enter description' }]}
             >
-              <TextArea
-                placeholder="Enter description"
-                rows={5}
-                className="h-[48px]"
-              />
+              <TextArea placeholder="Enter description" rows={5} />
             </Form.Item>
 
-            <Form.Item
-              label="Geolocation"
-              name="geolocation"
-              rules={[{ required: true, message: 'Please select geolocation' }]}
-            >
-              <div className="h-[300px] w-full rounded-lg overflow-hidden">
-                <MapContainer
-                  zoom={12}
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <LocationPicker
-                    onSelect={(geo) => {
-                      form.setFieldsValue({ geolocation: geo })
-                    }}
-                  />
-                </MapContainer>
-              </div>
-            </Form.Item>
+            {/* Market Value - Only shown for human verification */}
+            {/* {shouldShowMarketValue() && (
+              <Form.Item
+                label="Market Value ($)"
+                name="marketvalue"
+                rules={[
+                  { required: true, message: 'Please enter market value' },
+                ]}
+              >
+                <InputNumber
+                  placeholder="Enter market value"
+                  className="h-[48px] w-full"
+                  min={0}
+                  formatter={(value) =>
+                    `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  }
+                  parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+                />
+              </Form.Item>
+            )} */}
+
+            {/* Geolocation - Only shown for pro/collector packages */}
+            {/* {shouldShowGeolocation() && (
+              <Form.Item
+                label="Geolocation (Optional for Pro/Collector plans)"
+                name="geolocation"
+                rules={[
+                  { required: false, message: 'Please select geolocation' },
+                ]}
+              >
+                <div className="h-[300px] w-full rounded-lg overflow-hidden">
+                  <MapContainer
+                    center={[23.8103, 90.4125]} // Default to Dhaka
+                    zoom={12}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <LocationPicker
+                      onSelect={(geo) => {
+                        form.setFieldsValue({ geolocation: geo })
+                      }}
+                    />
+                  </MapContainer>
+                </div>
+                <Text type="secondary" className="text-sm mt-2 block">
+                  Click on the map to set location
+                </Text>
+              </Form.Item>
+            )} */}
 
             <div className="text-center pt-4">
-              <Button
-                type="primary"
-                htmlType="submit"
-                className="bg-green-600 h-[42px] hover:bg-green-700 border-green-600 px-8"
-              >
-                Continue
-              </Button>
+              <Space>
+                <Button
+                  size="large"
+                  onClick={() => setCurrentStep('upload')}
+                  className="px-8"
+                  disabled={loading}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  className="bg-green-600 h-[48px] hover:bg-green-700 border-green-600 px-8"
+                  loading={loading}
+                >
+                  {loading ? 'Submitting...' : 'Post'}
+                </Button>
+              </Space>
             </div>
           </Form>
         </Card>
@@ -396,10 +623,9 @@ const SneakerAuthSystem: React.FC = () => {
     </div>
   )
 
-  // Verification Step Component
-  const VerificationStep: React.FC = () => (
+  const ProcessingStep: React.FC = () => (
     <div
-      className=" bg-transparent flex items-center justify-center mt-20"
+      className="bg-transparent flex items-center justify-center mt-20"
       style={{
         backgroundImage: "url('/landing_page/s1.jpg')",
         backgroundSize: 'cover',
@@ -411,232 +637,28 @@ const SneakerAuthSystem: React.FC = () => {
         overflow: 'hidden',
       }}
     >
-      <div className="absolute inset-0 bg-green-950 opacity-60 " />
-      <div className="max-w-2xl mx-auto p-8">
-        <Card className="shadow-lg text-center">
-          <Title level={2} className="mb-8">
-            Choose Verification Method
-          </Title>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card
-              hoverable
-              onClick={handleAICheck}
-              className="border-2 border-blue-200 hover:border-blue-400 transition-colors cursor-pointer"
-            >
-              <div className="text-center py-8">
-                <AiOutlineRobot className="text-6xl text-blue-500 mx-auto mb-4" />
-                <Title level={3} className="text-blue-600">
-                  AI Check
-                </Title>
-                <Text className="text-gray-600">
-                  Automated authentication using AI technology
-                </Text>
-              </div>
-            </Card>
-
-            <Card
-              hoverable
-              onClick={handleHumanCheck}
-              className="border-2 border-green-200 hover:border-green-400 transition-colors cursor-pointer"
-            >
-              <div className="text-center py-8">
-                <AiOutlineUser className="text-6xl text-green-500 mx-auto mb-4" />
-                <Title level={3} className="text-green-600">
-                  Human Check
-                </Title>
-                <Text className="text-gray-600">
-                  Manual verification by authentication experts
-                </Text>
-              </div>
-            </Card>
-          </div>
-        </Card>
-      </div>
+      <div className="absolute inset-0 bg-green-950 opacity-60" />
+      <Card className="text-center p-8 relative z-10">
+        <div className="mb-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
+        </div>
+        <Title level={3}>AI Authentication in Progress...</Title>
+        <Text className="text-gray-600">
+          Please wait while we analyze your sneaker
+        </Text>
+      </Card>
     </div>
   )
 
-  // Result Step Component
-  const ResultStep: React.FC = () => (
-    <div
-      className=" bg-transparent flex items-center justify-center mt-20"
-      style={{
-        backgroundImage: "url('/landing_page/s1.jpg')",
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        width: '100%',
-        minHeight: '100vh',
-        backgroundPosition: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <div className="absolute inset-0 bg-green-950 opacity-60 " />
-      <div className="max-w-4xl w-full mx-auto p-8">
-        <Card className="shadow-lg">
-          <Title level={2} className="text-center mb-8">
-            Authentication Report
-          </Title>
-
-          {/* Show all uploaded images */}
-          <div className="mb-6">
-            <Title level={4} className="mb-4">
-              All Uploaded Images:
-            </Title>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {uploadedImages.map((image, index) => (
-                <div key={image.uid} className="relative">
-                  <Image
-                    width={5000}
-                    height={5000}
-                    src={image.url}
-                    alt={`Sneaker ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                  />
-                  <div className="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                    {index + 1}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Divider />
-
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <Text strong>Name:</Text>
-              <Text>{form.getFieldValue('name')}</Text>
-            </div>
-
-            <div className="flex justify-between">
-              <Text strong>Brand:</Text>
-              <Text>{form.getFieldValue('brand')}</Text>
-            </div>
-            <div className="flex justify-between">
-              <Text strong>Code:</Text>
-              <Text>{form.getFieldValue('code')}</Text>
-            </div>
-            <div className="flex justify-between">
-              <Text strong>Description:</Text>
-              <Text>{form.getFieldValue('description')}</Text>
-            </div>
-
-            {verificationMethod === 'ai' && aiResult && (
-              <>
-                <Divider />
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <Text strong>Authenticity:</Text>
-                    <Text>{aiResult.authenticity}%</Text>
-                  </div>
-                  <Progress
-                    percent={aiResult.authenticity}
-                    strokeColor={
-                      aiResult.authenticity >= 80 ? '#52c41a' : '#faad14'
-                    }
-                  />
-                  <div className="flex justify-between">
-                    <Text strong>AI Review:</Text>
-                    <Text
-                      className={
-                        aiResult.aiReview === 'Pass'
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }
-                    >
-                      {aiResult.aiReview}{' '}
-                      {aiResult.aiReview === 'Pass' ? '✓' : '✗'}
-                    </Text>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="text-center mt-8 space-x-4">
-            <Button size="large" onClick={resetForm}>
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={handleFinalSubmit}
-              className="bg-green-600 hover:bg-green-700 border-green-600"
-            >
-              Post
-            </Button>
-          </div>
-        </Card>
-      </div>
-    </div>
-  )
-
-  if (loading) {
-    return (
-      <div
-        className=" bg-transparent flex items-center justify-center mt-20"
-        style={{
-          backgroundImage: "url('/landing_page/s1.jpg')",
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          width: '100%',
-          minHeight: '100vh',
-          backgroundPosition: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div className="absolute inset-0 bg-green-950 opacity-60 " />
-        <Card className="text-center p-8">
-          <div className="mb-4">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
-          </div>
-          <Title level={3}>AI Authentication in Progress...</Title>
-          <Text className="text-gray-600">
-            Please wait while we analyze your sneaker
-          </Text>
-        </Card>
-      </div>
-    )
+  // Main render logic - Removed result step and processing step
+  switch (currentStep) {
+    case 'upload':
+      return <UploadStep />
+    case 'form':
+      return <FormStep />
+    default:
+      return <UploadStep />
   }
-
-  return (
-    <>
-      {currentStep === 'upload' && <UploadStep />}
-      {currentStep === 'form' && <FormStep />}
-      {currentStep === 'verification' && <VerificationStep />}
-      {currentStep === 'result' && <ResultStep />}
-
-      <Modal
-        title="Confirm Submission"
-        open={showModal}
-        onCancel={() => setShowModal(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={submitToSuperAdmin}
-            className="bg-green-600 hover:bg-green-700 border-green-600"
-          >
-            Submit to Super Admin
-          </Button>,
-        ]}
-        centered
-      >
-        <p>
-          Are you sure you want to submit this sneaker authentication request to
-          the Super Admin?
-        </p>
-        <p className="text-gray-600 text-sm mt-2">
-          Once submitted, the request will be reviewed and processed by the
-          administrative team.
-        </p>
-      </Modal>
-    </>
-  )
 }
 
 export default SneakerAuthSystem

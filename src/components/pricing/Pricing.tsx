@@ -5,6 +5,11 @@ import {
   useGetSubscriptionQuery,
 } from '@/redux/subscriptionsApis'
 import { IoMdCheckmarkCircleOutline } from 'react-icons/io'
+import {
+  useGetPaymentQuery,
+  usePostPaymentCheckoutMutation,
+} from '@/redux/paymentApis'
+import toast from 'react-hot-toast'
 
 interface Subscription {
   _id: string
@@ -35,6 +40,9 @@ interface Plan {
 const Pricing: React.FC = () => {
   const { data: getAllSubscription, isLoading: isLoadingSubscriptions } =
     useGetSubscriptionQuery(undefined)
+
+  const { data: paymentData, refetch } = useGetPaymentQuery(undefined)
+  const [postPay] = usePostPaymentCheckoutMutation()
 
   const [activeTab, setActiveTab] = useState<'monthly' | 'yearly'>('monthly')
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
@@ -100,12 +108,42 @@ const Pricing: React.FC = () => {
       if (plan.highlight || plan.originalData.price === 0) {
         console.log('Free plan selected, API call triggered automatically')
         console.log('Free subscription data:', freeSubscriptionData)
+        return
+      }
+
+      // if (paymentData?.data?.onboardingUrl?.card_payments === 'inactive') {
+      //   const updated = await refetch()
+      //   console.log(updated)
+      //   const onboardingUrl = updated?.data?.data?.onboardingUrl
+
+      //   if (onboardingUrl && typeof onboardingUrl === 'string') {
+      //     redirectToExternalUrl(onboardingUrl)
+      //     return
+      //   } else {
+      //     console.error('No valid onboarding URL received after refetch')
+      //     toast.error('Payment setup failed. Please try again.')
+      //     return
+      //   }
+      // }
+
+      if (
+        paymentData?.data?.onboardingUrl &&
+        typeof paymentData.data.onboardingUrl === 'string'
+      ) {
+        console.log('Redirecting to existing payment URL')
+        window.location.href = paymentData.data.onboardingUrl
       } else {
-        console.log('Paid plan selected:', plan)
-        // Integrate payment gateway or API call here
+        const result = await postPay({
+          price: plan.originalData.price,
+          subscriptionId: plan.originalData._id,
+        })
+        // console.log(result)
+        window.location.href = result?.data?.data?.checkoutUrl
       }
     } catch (error) {
       console.error('Error selecting plan:', error)
+      toast.error('Something went wrong. Please try again.')
+      setSelectedPlanId(null)
     }
   }
 

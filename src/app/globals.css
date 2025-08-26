@@ -46,3 +46,8 @@ body {
 .custom-rate .ant-rate-star-full svg {
       color: #facc15;
 }
+
+
+.ant-rate-star-zero .ant-rate-star-second svg {
+      color: white !important;
+}
