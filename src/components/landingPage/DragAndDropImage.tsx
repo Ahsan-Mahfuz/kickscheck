@@ -30,6 +30,7 @@ import {
   usePostSneakersProfileMutation,
 } from '@/redux/subscriptionsApis'
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
+import toast from 'react-hot-toast'
 
 const { Dragger } = Upload
 const { TextArea } = Input
@@ -256,11 +257,13 @@ const SneakerAuthSystem: React.FC = () => {
           values.marketvalue && {
             marketvalue: Number(values.marketvalue),
           }),
-        ...(shouldShowGeolocation() &&
-          values.geolocation && {
-            geolocation: values.geolocation,
-          }),
+
+        geolocation: {
+          coordinates: [23.8103, 90.4125],
+        },
       }
+
+      console.log(jsonData)
 
       // Clear FormData and use the JSON approach
       const finalFormData = new FormData()
@@ -289,14 +292,14 @@ const SneakerAuthSystem: React.FC = () => {
         id: selectedSubscription.subscriptionId._id,
       }).unwrap()
 
-      message.success('Sneaker profile submitted successfully!')
+      toast.success('Sneaker profile submitted successfully!')
       console.log('Submission response:', response)
 
       // Reset form after successful submission
       resetForm()
     } catch (error) {
       console.error('Submission error:', error)
-      message.error('Failed to submit sneaker profile. Please try again.')
+      toast.error('Failed to submit sneaker profile. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -548,7 +551,7 @@ const SneakerAuthSystem: React.FC = () => {
             </Form.Item>
 
             {/* Market Value - Only shown for human verification */}
-            {/* {shouldShowMarketValue() && (
+            {shouldShowMarketValue() && (
               <Form.Item
                 label="Market Value ($)"
                 name="marketvalue"
@@ -563,10 +566,10 @@ const SneakerAuthSystem: React.FC = () => {
                   formatter={(value) =>
                     `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                   }
-                  parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+                  // parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
                 />
               </Form.Item>
-            )} */}
+            )}
 
             {/* Geolocation - Only shown for pro/collector packages */}
             {/* {shouldShowGeolocation() && (

@@ -31,6 +31,7 @@ const Profile: React.FC = () => {
   const { data: getMyBadge } = useGetMySubscriptionBadgeQuery({
     id: id,
   })
+
   return (
     <div className="relative">
       <div
@@ -87,9 +88,11 @@ const Profile: React.FC = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 bg-gree">
-            <BiPurchaseTag />
-            {getMyBadge?.data?.subscriptionId?.subscription_period} Badge
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold text-sm shadow-md hover:scale-105 transition-transform duration-200">
+              <BiPurchaseTag className="text-white" />
+              {getMyBadge?.data?.subscriptionId?.subscription_period} Badge
+            </span>
           </div>
 
           <div className="bg-white !mt-5  !text-black font-bold px-3 py-2 rounded-lg">

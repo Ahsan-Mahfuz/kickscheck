@@ -62,7 +62,7 @@ const ShoeDetails = () => {
             </div>
           </section>
           <Link
-            href={`/resale?brand=${shoeDetailsData?.brand_name}`}
+            href={`/resale/${shoeDetailsData?.brand_name}`}
             className="w-1/4 flex items-end justify-end"
           >
             <div className="text-xl flex items-center gap-2 hover:text-blue-700 cursor-pointer px-10 py-3 bg-white text-black">
@@ -104,6 +104,14 @@ const ShoeDetails = () => {
                 <div>({shoeDetailsData?.totalReviews})</div>
               </div>
             </div>
+            {shoeDetailsData?.nfcTeg && (
+              <div className="flex items-center gap-2">
+                NFC Card :
+                <div className="flex items-center gap-1">
+                  <div>{shoeDetailsData?.nfcTeg}</div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

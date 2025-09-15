@@ -6,6 +6,7 @@ import PassCard from './PassCard'
 import RecentPosts from './RecentPosts'
 import NotPassCard from './NotPassCard'
 import RealTimeMarketValueChecking from './RealTimeMarketValueChecking'
+import SneakerHeatMap from '../heatMap/HeatMap'
 
 const MyCardItems = () => {
   const items: TabsProps['items'] = [
@@ -26,10 +27,13 @@ const MyCardItems = () => {
     },
     {
       key: '4',
-      label: (
-        <div className="font-bold text-white text-xl">Market Value</div>
-      ),
+      label: <div className="font-bold text-white text-xl">Market Value</div>,
       children: <RealTimeMarketValueChecking />,
+    },
+    {
+      key: '5',
+      label: <div className="font-bold text-white text-xl ">Heat Map</div>,
+      children: <SneakerHeatMap />,
     },
   ]
 

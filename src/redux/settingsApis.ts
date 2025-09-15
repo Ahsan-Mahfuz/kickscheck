@@ -43,7 +43,7 @@ const settingsApis = baseApis.injectEndpoints({
     }),
     getPrivacyPolicy: builder.query<PrivacyPolicyResponse, void>({
       query: () => ({
-        url: '/setting/find_by_privacy_policyss',
+        url: '/setting/find_by_privacy_policys',
         method: 'GET',
       }),
     }),

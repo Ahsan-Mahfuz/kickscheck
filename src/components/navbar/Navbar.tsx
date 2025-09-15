@@ -8,6 +8,13 @@ import { CiMenuBurger } from 'react-icons/ci'
 import { MdClose } from 'react-icons/md'
 import Cookies from 'js-cookie'
 import { useGetProfileQuery } from '@/redux/profileApis'
+import { imageUrl } from '@/redux/main/server'
+type ProfileData = {
+  name: string
+  email: string
+  id: string
+  photo?: string
+}
 
 const Navbar = () => {
   const pathname = usePathname()
@@ -19,7 +26,9 @@ const Navbar = () => {
     setToken(localToken)
   }, [])
 
-  const { data: profileData, error } = useGetProfileQuery(undefined)
+  const { data: profileData } = useGetProfileQuery(undefined)
+
+  const profile: ProfileData | undefined = profileData?.data
 
   const getLinkClass = (path: string) =>
     pathname === path ? ' font-semibold text-yellow-500' : 'no-underline'
@@ -79,7 +88,11 @@ const Navbar = () => {
                   <section className="flex items-center gap-2">
                     <div className="border border-green-400 rounded-full">
                       <Image
-                        src="/shoe/shoe-2.jpg"
+                        src={
+                          profile?.photo
+                            ? `${imageUrl}/${(profile as any).photo}`
+                            : '/shoe/shoe-2.jpg'
+                        }
                         alt="shoe"
                         width={5000}
                         height={5000}
@@ -88,10 +101,8 @@ const Navbar = () => {
                     </div>
 
                     <div>
-                      <div>{profileData?.data?.name || 'Loading...'}</div>
-                      <div className="text-xs">
-                        {profileData?.data?.email || ''}
-                      </div>
+                      <div>{profile?.name || 'Loading...'}</div>
+                      <div className="text-xs">{profile?.email || ''}</div>
                     </div>
                   </section>
                 </Link>

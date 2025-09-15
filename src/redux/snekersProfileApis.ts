@@ -51,6 +51,14 @@ const snekersProfileApis = baseApis.injectEndpoints({
       }),
       keepUnusedDataFor: 300,
     }),
+    getSneakerHeatMap: builder.query({
+      query: ({ id, params }) => ({
+        url: `/user_sneakers_profile/my_heat_map/${id}`,
+        method: 'GET',
+        params,
+      }),
+      keepUnusedDataFor: 300,
+    }),
   }),
   overrideExisting: false,
 })
@@ -63,5 +71,6 @@ export const {
   useGetAllSneakerQuery,
   useGetRealTimeMarketValueQuery,
   useGetResaleValueQuery,
+  useGetSneakerHeatMapQuery,
 } = snekersProfileApis
 export default snekersProfileApis
