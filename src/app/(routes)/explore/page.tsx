@@ -1,44 +1,44 @@
-'use client'
-import ShoeCard from '@/components/shoeCard/ShoeCard'
-import ShoeCardExplore from '@/components/shoeCardExplore/ShoeCardExplore'
-import { useGetAllSneakerQuery } from '@/redux/snekersProfileApis'
-import React from 'react'
+"use client";
+import ShoeCard from "@/components/shoeCard/ShoeCard";
+import ShoeCardExplore from "@/components/shoeCardExplore/ShoeCardExplore";
+import { useGetAllSneakerQuery } from "@/redux/snekersProfileApis";
+import React from "react";
 interface Photo {
-  _id: string
-  photoUrl: string
+  _id: string;
+  photoUrl: string;
 }
 
 interface Sneaker {
-  _id: string
-  photo: Photo
-  sneaker_name: string
-  brand_name: string
-  isCheckedAI: boolean
-  averageRating: number
-  totalReviews: number
-  createdAt: string
+  _id: string;
+  photo: Photo;
+  sneaker_name: string;
+  brand_name: string;
+  isCheckedAI: boolean;
+  averageRating: number;
+  totalReviews: number;
+  createdAt: string;
 }
 const Explore = () => {
-  const { data: getAllSneakersData } = useGetAllSneakerQuery(undefined)
-  const sneakersData: Sneaker[] = getAllSneakersData?.data ?? []
+  const { data: getAllSneakersData } = useGetAllSneakerQuery(undefined);
+  const sneakersData: Sneaker[] = getAllSneakersData?.data ?? [];
 
   return (
     <>
       <div
         style={{
           backgroundImage: "url('/explore/explore.png')",
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          width: '100%',
-          height: '60vh',
-          position: 'relative',
-          overflow: 'hidden',
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+          width: "100%",
+          height: "60vh",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
         <div
           className="absolute inset-0 bg-green-950 opacity-50 z-10"
-          style={{ pointerEvents: 'none' }}
+          style={{ pointerEvents: "none" }}
         ></div>
 
         <section className="mt-10 flex justify-between items-center text-white responsive-width mx-auto gap-20 relative z-20">
@@ -56,7 +56,7 @@ const Explore = () => {
         </section>
       </div>
 
-      <section className="mt-10 my-20 grid grid-cols-3 gap-5 responsive-width mx-auto">
+      <section className="mt-10 my-20 grid grid-cols-3 max-sm:grid-cols-2  gap-5 responsive-width mx-auto">
         {sneakersData.map((sneaker) => (
           <ShoeCardExplore
             key={sneaker._id}
@@ -72,7 +72,7 @@ const Explore = () => {
         ))}
       </section>
     </>
-  )
-}
+  );
+};
 
-export default Explore
+export default Explore;

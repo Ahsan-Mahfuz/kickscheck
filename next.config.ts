@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
       "http://10.10.20.16:3054/",
       "h64cf9fw-3054.inc1.devtunnels.ms",
       "walls-port-thought-rj.trycloudflare.com",
+      "give-yen-whether-thereby.trycloudflare.com",
     ],
   },
 };
